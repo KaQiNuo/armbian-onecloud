@@ -10,7 +10,7 @@ on:
 
 env:
   SCRIPT_REPO: ${{ github.repository }}
-  SCRIPT_REF: ${{ github.ref_name }}
+  SCRIPT_REF: ${{ github.ref_name || 'readme' }}
   UBOOT_REPO: hzyitc/u-boot-onecloud
   UBOOT_RELEASE: latest
   UBOOT_BURNIMG: eMMC.burn.img
