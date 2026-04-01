@@ -17,7 +17,6 @@ env:
   ARMBIAN_REPO: armbian/build
   ARMBIAN_REF: v25.8.0
   PATCHES: 4077,5076
-  PATCHES_DISABLED: 5082
 
 permissions:
   contents: write
@@ -146,7 +145,9 @@ jobs:
         if: ${{ env.PATCHES }}
         run: |
           echo "::group::Download"
-          curl -L -O "https://github.com/armbian/build/pull/{${PATCHES}}.patch"
+          for patch_id in $(echo "$PATCHES" | tr ',' '\n'); do
+            curl -L -o "${patch_id}.patch" "https://github.com/armbian/build/pull/${patch_id}.patch"
+          done
           echo "::endgroup::"
 
           for file in *.patch; do
@@ -157,9 +158,7 @@ jobs:
 
       - name: Build
         run: |
-          # Don't update remote cache
-          export GITHUB_ACTIONS=false
-          sudo --preserve-env \
+          sudo GITHUB_ACTIONS=false \
             ./compile.sh kernel \
               ALLOW_ROOT=yes \
               BOARD=onecloud \
@@ -226,7 +225,9 @@ jobs:
         if: ${{ env.PATCHES }}
         run: |
           echo "::group::Download"
-          curl -L -O "https://github.com/armbian/build/pull/{${PATCHES}}.patch"
+          for patch_id in $(echo "$PATCHES" | tr ',' '\n'); do
+            curl -L -o "${patch_id}.patch" "https://github.com/armbian/build/pull/${patch_id}.patch"
+          done
           echo "::endgroup::"
 
           for file in *.patch; do
@@ -243,9 +244,7 @@ jobs:
 
       - name: Build
         run: |
-          # Don't update remote cache
-          export GITHUB_ACTIONS=false
-          sudo --preserve-env \
+          sudo GITHUB_ACTIONS=false \
             ./compile.sh build \
               ALLOW_ROOT=yes \
               BOARD=onecloud \
@@ -285,11 +284,12 @@ jobs:
 
       - name: Extract boot and rootfs partitions
         run: |
+          set -e
           diskimg=$(ls output/images/*.img)
-          loop=$(sudo losetup --find --show --partscan $diskimg)
-          sudo img2simg ${loop}p1 burn/boot.simg
-          sudo img2simg ${loop}p2 burn/rootfs.simg
-          sudo losetup -d $loop
+          loop=$(sudo losetup --find --show --partscan "$diskimg")
+          sudo img2simg "${loop}p1" burn/boot.simg
+          sudo img2simg "${loop}p2" burn/rootfs.simg
+          sudo losetup -d "$loop"
           sudo chown $(id -u):$(id -g) -R burn/
 
       - name: Generate burn image
@@ -310,6 +310,7 @@ jobs:
 
       - name: Hash and compress images
         run: |
+          > sha256sum
           for f in output/images/*.img; do
             sha256sum "$f" | tee -a sha256sum
             xz --threads=0 --compress "$f"
